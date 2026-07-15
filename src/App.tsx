@@ -10,8 +10,10 @@ import { ApplianceModal } from './components/ApplianceModal';
 import { AutomationModal } from './components/AutomationModal';
 import { BottomNav } from './components/BottomNav';
 import { KiriScanner } from './components/KiriScanner.jsx';
-
+import { Chatbot } from './views/Chatbot';
+import { IntroScreen } from './components/IntroScreen';
 export default function App() {
+  const [showIntro, setShowIntro] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [isNightMode, setIsNightMode] = useState(false);
   const [inspectedCard, setInspectedCard] = useState<Appliance | null>(null);
@@ -32,6 +34,10 @@ export default function App() {
       setInspectedCard((prev) => (prev ? { ...prev, status: prev.status === 'ON' ? 'OFF' : 'ON' } : prev));
     }
   };
+
+  if (showIntro) {
+    return <IntroScreen onEnter={() => setShowIntro(false)} />;
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-5xl mx-auto relative">
@@ -61,6 +67,7 @@ export default function App() {
           <KiriScanner onScanComplete={() => setActiveTab('3dhome')} />
         </div>
       )}
+      {activeTab === 'chatbot' && <Chatbot />}
 
       {/* FULL APPLIANCE INSPECTION MODAL */}
       {inspectedCard && (

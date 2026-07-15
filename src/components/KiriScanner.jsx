@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Camera, CheckCircle2, ImagePlus, Sparkles, UploadCloud } from 'lucide-react';
 
-const KIRI_API_KEY = 'YOUR_KIRI_API_KEY';
-const KIRI_API_BASE_URL = 'https://api.kiri.engine/v1';
+const KIRI_API_KEY = 'kiri_s_d7SHghBWSNwCyPVoQGmL7zQYkHnqtqW1LbgALpiro';
+const KIRI_API_BASE_URL = 'https://api.kiriengine.app/api';
 
 function getNestedValue(payload, keys) {
   if (!payload || typeof payload !== 'object') return null;
@@ -56,8 +56,8 @@ export function KiriScanner({ onScanComplete }) {
   };
 
   const scanPhotos = async () => {
-    if (!selectedFiles.length) {
-      setError('Please select at least one photo first.');
+    if (!selectedFiles.length || selectedFiles.length < 20) {
+      setError(`Please select at least 20 photos first (currently selected ${selectedFiles.length}). KIRI Engine requires 20+ images for reconstruction.`);
       return;
     }
 
@@ -72,14 +72,14 @@ export function KiriScanner({ onScanComplete }) {
 
     const formData = new FormData();
     selectedFiles.forEach((file) => {
-      formData.append('images', file, file.name);
-      formData.append('files', file, file.name);
+      formData.append('imagesFiles', file, file.name);
     });
-    formData.append('name', 'smart-home-scan');
-    formData.append('output_format', 'glb');
+    formData.append('calculateType', '1');
+    formData.append('fileFormat', 'glb');
 
     try {
-      const createResponse = await fetch(`${KIRI_API_BASE_URL}/jobs`, {
+      // 1. Upload photos to start the scan
+      const createResponse = await fetch(`${KIRI_API_BASE_URL}/v1/open/photo/image`, {
         method: 'POST',
         headers: {
           'x-api-key': KIRI_API_KEY,
@@ -94,24 +94,18 @@ export function KiriScanner({ onScanComplete }) {
       }
 
       const createPayload = await createResponse.json();
-      const jobId = getNestedValue(createPayload, ['id', 'job_id', 'jobId', 'task_id', 'taskId']);
-      const directModelUrl = getNestedValue(createPayload, ['download_url', 'downloadUrl', 'model_url', 'modelUrl', 'output_url', 'outputUrl', 'url']);
-
-      if (directModelUrl) {
-        onScanComplete?.(directModelUrl);
-        setStatus('Scan complete — your model is ready');
-        return;
-      }
+      const jobId = getNestedValue(createPayload, ['serialize', 'id', 'job_id', 'jobId', 'task_id', 'taskId']);
 
       if (!jobId) {
-        throw new Error('No job ID was returned by the API.');
+        throw new Error('No serialize ID was returned by the API.');
       }
 
       setStatus('Processing 3D reconstruction…');
 
+      // 2. Poll for status
       let attempts = 0;
       while (attempts < 40) {
-        const pollResponse = await fetch(`${KIRI_API_BASE_URL}/jobs/${jobId}`, {
+        const pollResponse = await fetch(`${KIRI_API_BASE_URL}/v1/open/model/getStatus?serialize=${jobId}`, {
           method: 'GET',
           headers: {
             'x-api-key': KIRI_API_KEY,
@@ -124,10 +118,23 @@ export function KiriScanner({ onScanComplete }) {
         }
 
         const pollPayload = await pollResponse.json();
-        const currentStatus = normalizeStatus(getNestedValue(pollPayload, ['status', 'state', 'job_status', 'jobStatus']));
+        
+        // Check Kiri Engine specific status code (2 = Successful, 1 = Failed, 0 = Processing)
+        const currentStatusCode = getNestedValue(pollPayload, ['status']);
+        const currentStatusStr = normalizeStatus(getNestedValue(pollPayload, ['state', 'job_status', 'jobStatus']));
+        
+        const isComplete = currentStatusCode === 2 || currentStatusStr === 'complete';
+        const isFailed = currentStatusCode === 1 || currentStatusStr === 'failed';
 
-        if (currentStatus === 'complete') {
-          const finalModelUrl = getNestedValue(pollPayload, ['download_url', 'downloadUrl', 'model_url', 'modelUrl', 'output_url', 'outputUrl', 'url']);
+        if (isComplete) {
+          // 3. Get Download URL
+          const dlResponse = await fetch(`${KIRI_API_BASE_URL}/v1/open/model/download-3d-models-zipped?serialize=${jobId}`, {
+             method: 'GET',
+             headers: { Authorization: `Bearer ${KIRI_API_KEY}` }
+          });
+          const dlPayload = await dlResponse.json();
+          const finalModelUrl = getNestedValue(dlPayload, ['url', 'download_url', 'downloadUrl', 'model_url', 'modelUrl', 'output_url', 'outputUrl']) || getNestedValue(pollPayload, ['download_url', 'model_url', 'url']);
+          
           if (!finalModelUrl) {
             throw new Error('The job completed but no model URL was returned.');
           }
@@ -137,7 +144,7 @@ export function KiriScanner({ onScanComplete }) {
           return;
         }
 
-        if (currentStatus === 'failed') {
+        if (isFailed) {
           throw new Error('The reconstruction job failed.');
         }
 
