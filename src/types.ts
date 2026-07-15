@@ -34,6 +34,10 @@ export interface Automation {
   desc: string;
   savingVal: string;
   active: boolean;
+  why: string;
+  evidence: string;
+  confidence: string;
+  tradeoff: string;
 }
 
 export interface Insight {

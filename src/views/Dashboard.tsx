@@ -9,6 +9,7 @@ interface DashboardProps {
   onSelectAppliance: (appliance: Appliance) => void;
   onToggleAppliance: (id: string) => void;
   onToggleAutomation: (id: string) => void;
+  onSelectAutomation: (automation: Automation) => void;
 }
 
 export function Dashboard({
@@ -18,6 +19,7 @@ export function Dashboard({
   onSelectAppliance,
   onToggleAppliance,
   onToggleAutomation,
+  onSelectAutomation,
 }: DashboardProps) {
   const currentDrawWatts = appliances.reduce((acc, app) => acc + (app.status === 'ON' ? app.baseWatts : 0), 0);
   const totalDailyKwh = appliances.reduce((acc, app) => acc + app.todayKwh, 0).toFixed(1);
@@ -168,7 +170,8 @@ export function Dashboard({
             {automations.map((auto) => (
               <div
                 key={auto.id}
-                className={`flex items-center justify-between p-5 md:p-6 rounded-3xl border-4 border-[#2D3436] shadow-[0_8px_0_0_#2D3436] transition-all bg-white ${
+                onClick={() => onSelectAutomation(auto)}
+                className={`flex items-center justify-between p-5 md:p-6 rounded-3xl border-4 border-[#2D3436] shadow-[0_8px_0_0_#2D3436] transition-all bg-white cursor-pointer ${
                   auto.active ? 'transform -translate-y-1' : ''
                 }`}
               >
@@ -181,7 +184,10 @@ export function Dashboard({
                 </div>
 
                 <button
-                  onClick={() => onToggleAutomation(auto.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleAutomation(auto.id);
+                  }}
                   className={`relative shrink-0 w-20 h-10 rounded-full border-4 border-[#2D3436] transition-colors duration-300 focus:outline-none ${
                     auto.active ? 'bg-[#3498DB]' : 'bg-[#F1F2F6]'
                   }`}
