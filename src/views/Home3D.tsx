@@ -1,64 +1,64 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, Sparkles } from 'lucide-react';
+import { Sparkles} from 'lucide-react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import JSZip from 'jszip';
-
-// TypeScript Type Declarations Matching your Schema
-export interface Appliance {
-  id: number | string;
-  name: string;
-  type: 'Air Conditioner' | 'Smart TV' | 'Lighting' | 'Water Heater' | string;
-  status: 'ON' | 'OFF';
-  accent: string;
-  pos: {
-    top: string | number;
-    left: string | number;
-  };
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
-}
+import type { Appliance } from '../types';
 
 interface Home3DProps {
   appliances: Appliance[];
   isNightMode: boolean;
   onToggleNightMode: () => void;
+  onSelectAppliance?: React.Dispatch<React.SetStateAction<Appliance | null>>;
 }
 
-export function Home3D({ appliances, isNightMode, onToggleNightMode }: Home3DProps) {
+export function Home3D({ appliances, isNightMode, onSelectAppliance: _onSelectAppliance }: Home3DProps) {
   const [globalModelUrl, setGlobalModelUrl] = useState<string>('/models/appartement.glb');
   const [globalCustomManager, setGlobalCustomManager] = useState<any>(null);
+  const [sceneTheme, setSceneTheme] = useState<'midnight' | 'sunrise' | 'grey'>('midnight');
+
+  const sceneBackgrounds: Record<string, { container: string; floor: string; accent: string }> = {
+   midnight: { container: '#000000', floor: '#1a1a1a', accent: '#ffffff' }, // Black, dark grey, white
+  sunrise: { container: '#ffffff', floor: '#f2f2f2', accent: '#000000' },   // White, light grey, black
+  grey: { container: '#808080', floor: '#cccccc', accent: '#333333' },     // Mid-grey, light grey, dark grey
+  };
+
+  const activeScene = sceneBackgrounds[sceneTheme];
 
   return (
     <div className={`space-y-6 animate-fade-in ${isNightMode ? 'night-mode' : ''} transition-colors duration-1000 w-full mx-auto p-4`}>
       
       {/* Neo-Brutalist Header Control Panel */}
-      <header className="flex justify-between items-center pt-4">
-        <div className="inline-block bg-[#2D3436] border-4 border-[#2D3436] rounded-2xl px-6 py-2 shadow-[0_6px_0_0_rgba(0,0,0,0.2)]">
-          <h1 className="text-2xl font-black text-white tracking-wider uppercase flex items-center gap-2">
+      <header className="flex flex-col gap-3 pt-4 md:flex-row md:items-center md:justify-between">
+        <div className="inline-block bg-white border-4 border-[#2D3436] rounded-2xl px-6 py-2 shadow-[0_6px_0_0_rgba(0,0,0,0.2)]">
+          <h1 className="text-2xl font-black text-[#2D3436] tracking-wider uppercase flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-cyan-400" />
             3D Live Overview
           </h1>
         </div>
 
-        <button
-          onClick={onToggleNightMode}
-          className="w-14 h-14 bg-white border-4 border-[#2D3436] rounded-full flex items-center justify-center shadow-[0_6px_0_0_#2D3436] hover:translate-y-1 hover:shadow-[0_4px_0_0_#2D3436] active:translate-y-2 active:shadow-none transition-all focus:outline-none"
-        >
-          {isNightMode ? <Sun className="w-6 h-6 text-[#F1C40F]" /> : <Moon className="w-6 h-6 text-[#3498DB]" />}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {(['midnight', 'sunrise', 'grey'] as const).map((theme) => (
+            <button
+              key={theme}
+              onClick={() => setSceneTheme(theme)}
+              className={`rounded-2xl border-4 border-[#2D3436] px-3 py-2 text-xs font-black uppercase tracking-[0.2em] shadow-[0_4px_0_0_#2D3436] transition-all ${
+                sceneTheme === theme ? 'bg-cyan-400 text-[#2D3436]' : 'bg-white text-[#2D3436]'
+              }`}
+            >
+              {theme === 'midnight' ? 'Midnight' : theme === 'sunrise' ? 'sunrise' : 'grey'}
+            </button>
+          ))}
+        </div>
       </header>
 
       {/* 3D Map Container Frame */}
-      <div className="relative w-full h-[500px] md:h-[600px] bg-slate-900 rounded-[32px] border-4 border-[#2D3436] shadow-inner overflow-hidden flex items-center justify-center transition-colors duration-1000">
+      <div
+        className="relative w-full h-[500px] md:h-[600px] rounded-[32px] border-4 border-[#2D3436] shadow-inner overflow-hidden flex items-center justify-center transition-colors duration-1000"
+        style={{ backgroundColor: activeScene.container }}
+      >
         
-        {/* Dynamic Night Ambient Overlay */}
-        <div
-          className={`absolute inset-0 bg-[#070b19] pointer-events-none transition-opacity duration-1000 z-10 ${
-            isNightMode ? 'opacity-70' : 'opacity-0'
-          }`}
-        ></div>
-
         {/* Real Interactive WebGL Room Canvas Canvas Layer */}
         <div className="absolute inset-0 z-0">
           <ThreeDViewEngine 
@@ -69,7 +69,7 @@ export function Home3D({ appliances, isNightMode, onToggleNightMode }: Home3DPro
               setGlobalModelUrl(url);
               setGlobalCustomManager(manager);
             }}
-            isNightMode={isNightMode}
+            background={activeScene}
           />
         </div>
       </div>
@@ -77,10 +77,9 @@ export function Home3D({ appliances, isNightMode, onToggleNightMode }: Home3DPro
       {/* Legend Map */}
       <div className="bg-white border-4 border-[#2D3436] rounded-2xl p-4 shadow-[0_6px_0_0_#2D3436] flex justify-center gap-6 text-sm font-black uppercase text-slate-600">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#2ECC71] animate-pulse shadow-[0_0_8px_rgba(46,204,113,0.7)]"></div> Active Flow
+          <div className="w-3 h-3 rounded-full bg-[#2ECC71] animate-pulse shadow-[0_0_8px_rgba(46,204,113,0.7)]"></div> Our House
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-slate-300"></div> Standby / Off
         </div>
       </div>
     </div>
@@ -92,10 +91,10 @@ interface ThreeDViewEngineProps {
   modelUrl: string;
   customManager: any;
   onModelChange: (url: string, manager: any) => void;
-  isNightMode: boolean;
+  background: { container: string; floor: string; accent: string };
 }
 
-function ThreeDViewEngine({ modelUrl, customManager, onModelChange, isNightMode }: ThreeDViewEngineProps) {
+function ThreeDViewEngine({ modelUrl, customManager, onModelChange, background }: ThreeDViewEngineProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<any>(null);
   const [loadingStatus, setLoadingStatus] = useState<string>('');
@@ -173,7 +172,6 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, isNightMode 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = isNightMode ? 0.55 : 1.2; 
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
@@ -212,24 +210,6 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, isNightMode 
     });
     resizeObserver.observe(mountRef.current);
 
-    // 4. Custom Architectural Lighting Component Matrix
-    const skyIntensity = isNightMode ? 0.1 : 0.6;
-    const groundIntensity = isNightMode ? 0.05 : 0.4;
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, skyIntensity);
-    scene.add(hemiLight);
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, groundIntensity);
-    scene.add(ambientLight);
-    
-    const sunIntensity = isNightMode ? 0.02 : 1.3;
-    const sunLight = new THREE.DirectionalLight(0xffffff, sunIntensity);
-    sunLight.position.set(12, 18, 8);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 1024;
-    sunLight.shadow.mapSize.height = 1024;
-    sunLight.shadow.bias = -0.0008;
-    scene.add(sunLight);
-
     // Smart Mesh Point Light Emission Setup Nodes
     const livingTvLight = new THREE.PointLight(0x2ECC71, 0, 12);
     livingTvLight.position.set(-2, 1.5, -2);
@@ -250,6 +230,10 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, isNightMode 
     waterHeaterLight.position.set(-3, 1.8, 3);
     waterHeaterLight.name = "WaterHeaterLight";
     scene.add(waterHeaterLight);
+
+    const accentGlow = new THREE.PointLight(new THREE.Color(background.accent), 8, 24);
+    accentGlow.position.set(0, 4, 0);
+    scene.add(accentGlow);
 
     // 5. Asynchronous GLTF Structural File Loader
     const activeManager = customManager || new THREE.LoadingManager();
@@ -301,13 +285,13 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, isNightMode 
       resizeObserver.disconnect();
       renderer.dispose();
     };
-  }, [modelUrl, customManager, isNightMode]);
+  }, [modelUrl, customManager]);
 
   return (
     <div className="w-full h-full relative">
       <div ref={mountRef} className="w-full h-full" />
       {loadingStatus && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+        <div className="absolute inset-0 flex items-center justify-center bg-white/50 rounded-lg">
           <div className="text-white text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400 mx-auto mb-2"></div>
             <p className="text-sm font-black uppercase text-cyan-400">{loadingStatus}</p>

@@ -8,6 +8,7 @@ import { EnergyRank } from './views/EnergyRank';
 import { Home3D } from './views/Home3D';
 import { ApplianceModal } from './components/ApplianceModal';
 import { BottomNav } from './components/BottomNav';
+import { KiriScanner } from './components/KiriScanner.jsx';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
@@ -48,6 +49,11 @@ export default function App() {
           onToggleNightMode={() => setIsNightMode(!isNightMode)}
           onSelectAppliance={setInspectedCard}
         />
+      )}
+      {activeTab === 'kiri' && (
+        <div className="max-w-3xl mx-auto py-6">
+          <KiriScanner onScanComplete={() => setActiveTab('3dhome')} />
+        </div>
       )}
 
       {/* FULL APPLIANCE INSPECTION MODAL */}
