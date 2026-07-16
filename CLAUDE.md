@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A single-page React + TypeScript "SmartThings Energy Dashboard" — a mocked-up UI for monitoring and controlling smart home appliances, tracking energy usage/cost, and gamifying energy savings. All data is static/in-memory (no backend, no API calls, no persistence); state lives entirely in `App.tsx` via `useState`.
+A single-page React + TypeScript "SAMSAVE" — a mocked-up UI for monitoring and controlling smart home appliances, tracking energy usage/cost, and gamifying energy savings. All data is static/in-memory (no backend, no API calls, no persistence); state lives entirely in `App.tsx` via `useState`.
 
 ## Commands
 

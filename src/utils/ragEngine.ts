@@ -93,7 +93,7 @@ function scoreChunk(queryTokens: string[], chunk: KnowledgeChunk): number {
 
 // ── Off-topic refusal pool ────────────────────────────────
 const REFUSALS = [
-  "I'm SmartCap AI — I can only help with questions about the SmartCap app, like managing appliances, energy usage, automations, or the 3D home view. Try asking me something like \"How do I save money on my energy bill?\"",
+  "I'm Chammak — I can only help with questions about the SmartCap app, like managing appliances, energy usage, automations, or the 3D home view. Try asking me something like \"How do I save money on my energy bill?\"",
   "That's outside my area! I'm specialised in SmartCap — things like your energy dashboard, appliance controls, XP rewards, or 3D home features. What would you like to know about those?",
   "Hmm, that doesn't seem to be about SmartCap. I can answer questions about your connected appliances, automations, energy rank, or how to use the app. Give one of those a try!",
   "I'm built specifically to assist with SmartCap features. For general questions, a general-purpose assistant would serve you better. Ask me about your energy usage, appliances, or 3D home — I'll know!",

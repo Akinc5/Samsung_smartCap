@@ -34,7 +34,7 @@ export function Dashboard({
             className="text-3xl md:text-5xl font-black text-white tracking-wider uppercase"
             style={{ WebkitTextStroke: '1.5px #2D3436' }}
           >
-            SmartThings Energy
+            SAMSAVE
           </h1>
         </div>
         <p className="text-lg font-bold text-slate-600 bg-white px-4 py-1 rounded-full border-2 border-slate-300 shadow-sm">
