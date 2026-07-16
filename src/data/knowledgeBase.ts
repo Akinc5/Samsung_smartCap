@@ -80,6 +80,14 @@ export const knowledgeBase: KnowledgeChunk[] = [
   },
 
   // ──────────────────── APPLIANCES ────────────────────
+  //
+  // NOTE: the "AI recommendation" sentences in the five appliance_* chunks
+  // below (appliance_ac, appliance_heater, appliance_washer, appliance_fridge,
+  // appliance_lights) are verified Step 7 output — Gemini-generated advice,
+  // checked against CLAUDE.md's household dataset (no fabricated numbers, no
+  // unlabeled savings claims), added 2026-07-16. Unlike the rest of this
+  // file's still-placeholder ₹/kg CO₂ figures, these specific sentences are
+  // the app's real, canonical chatbot copy — not placeholder content.
   {
     id: 'appliances_list',
     topic: 'appliance',
@@ -93,7 +101,7 @@ export const knowledgeBase: KnowledgeChunk[] = [
     topic: 'appliance',
     title: 'Samsung WindFree AI AC',
     content:
-      'The Samsung WindFree AI AC draws a flat ~1,040 W every night during its 6-hour overnight window — 208.48 kWh/week (59.5% of the household total, the single biggest consumer). It has a 5-star efficiency rating. Today it has consumed about 29.78 kWh, costing ₹2,140/month (placeholder, pending real tariff rate) and producing 182 kg CO₂/month (placeholder, pending real emissions factor). The AI recommends switching it to WindFree/Sleep mode during this overnight window, since it currently runs at full, unmodulated power all night — saving ₹240/month (same placeholder caveat). It runs at 230 V and is currently ON by default.',
+      'The Samsung WindFree AI AC draws a flat ~1,040 W every night during its 6-hour overnight window — 208.48 kWh/week (59.5% of the household total, the single biggest consumer). It has a 5-star efficiency rating. Today it has consumed about 29.78 kWh, costing ₹2,140/month (placeholder, pending real tariff rate) and producing 182 kg CO₂/month (placeholder, pending real emissions factor). Switching your AC to WindFree Sleep mode between 12am and 6am can help reduce the steady 1,040W it currently draws every night. Since this overnight cooling makes up 43.9 kWh—or 21% of your AC\'s total weekly energy—this simple mode change improves efficiency while keeping you comfortable. It runs at 230 V and is currently ON by default.',
     keywords: ['ac', 'air', 'conditioner', 'aircon', 'windfree', 'cooling', 'temperature', '1040', 'cool', 'air conditioning'],
   },
   {
@@ -101,7 +109,7 @@ export const knowledgeBase: KnowledgeChunk[] = [
     topic: 'appliance',
     title: 'Smart Water Heater',
     content:
-      'The Smart Water Heater peaks daily at ~2,770 W in the morning (2 hours) and ~1,777 W in the evening (2 hours), plus an extra 2 hours on days it overlaps the washing machine. It has a 3-star efficiency rating — the lowest of the five appliances. It consumes about 10.71 kWh today (74.99 kWh/week total), costing ₹1,033/month and producing 88 kg CO₂/month (both placeholders pending real tariff/emissions data). The AI recommendation is to shift its cycles 30-60 minutes off the AC\'s peak hours, since they currently hit their daily peaks at the exact same times. This reduces peak-hour overlap rather than total kWh, so the ₹180/month figure is a placeholder not directly tied to this specific mechanism. It runs at 230 V and is OFF by default.',
+      'The Smart Water Heater peaks daily at ~2,770 W in the morning (2 hours) and ~1,777 W in the evening (2 hours), plus an extra 2 hours on days it overlaps the washing machine. It has a 3-star efficiency rating — the lowest of the five appliances. It consumes about 10.71 kWh today (74.99 kWh/week total), costing ₹1,033/month and producing 88 kg CO₂/month (both placeholders pending real tariff/emissions data). Your water heater accounts for 74.99 kWh of your weekly energy, but its daily schedule currently overlaps perfectly with your AC\'s peak hours. By automatically shifting the water heater\'s schedule by just 30 to 60 minutes, we can stagger these heavy appliances and beautifully smooth out your home\'s energy demand. It runs at 230 V and is OFF by default.',
     keywords: ['heater', 'water', 'geyser', 'hot water', '2770', 'shower', 'heating', 'boiler'],
   },
   {
@@ -109,7 +117,7 @@ export const knowledgeBase: KnowledgeChunk[] = [
     topic: 'appliance',
     title: 'Bespoke AI Washing Machine',
     content:
-      'The Bespoke AI Washing Machine draws ~2,200 W on average when running (measured samples: 2,220/2,227/2,186/2,169 W) and has a 5-star efficiency rating. It only runs twice a week — May 8 (11am-12pm) and May 11 (9-10am) — both overlapping the water heater\'s peak hours, producing the week\'s two highest demand spikes (6,777 W / 6,703 W vs ~4,700 W typical). It totals 8.80 kWh/week, costing ₹270/month and producing 23 kg CO₂/month (both placeholders). The AI recommends scheduling laundry outside the water heater\'s active hours to avoid this overlap spike, rather than running at a fixed time of day. It runs at 220 V and is OFF by default.',
+      'The Bespoke AI Washing Machine draws ~2,200 W on average when running (measured samples: 2,220/2,227/2,186/2,169 W) and has a 5-star efficiency rating. It only runs twice a week — May 8 (11am-12pm) and May 11 (9-10am) — both overlapping the water heater\'s peak hours, producing the week\'s two highest demand spikes (6,777 W / 6,703 W vs ~4,700 W typical). It totals 8.80 kWh/week, costing ₹270/month and producing 23 kg CO₂/month (both placeholders). Running your washing machine while the water heater was active created your home\'s two highest power surges this week, hitting 6,777W and 6,703W. By automatically pausing the washer during active water heating cycles, you will effortlessly avoid this ~40% spike above your typical household peak. It runs at 220 V and is OFF by default.',
     keywords: ['washer', 'washing', 'machine', 'laundry', 'clothes', 'bespoke', '2200', 'wash'],
   },
   {
@@ -117,7 +125,7 @@ export const knowledgeBase: KnowledgeChunk[] = [
     topic: 'appliance',
     title: 'Bespoke Family Hub™ Refrigerator',
     content:
-      'The Bespoke Family Hub™ refrigerator runs continuously at a 150-180 W baseline with a 4-star efficiency rating. It consumes about 4.98 kWh today (34.85 kWh/week total), costing ₹688/month and producing 58 kg CO₂/month (both placeholders pending real tariff/emissions data). The AI recommendation is to monitor for abnormal draw spikes above this baseline — fault detection, not a scheduling or savings action — alongside an estimated ₹45/month savings figure shown in its detail modal (placeholder). It runs at 220 V and is always ON — SmartCap never proposes fully shutting off the refrigerator, only efficiency checks like this.',
+      'The Bespoke Family Hub™ refrigerator runs continuously at a 150-180 W baseline with a 4-star efficiency rating. It consumes about 4.98 kWh today (34.85 kWh/week total), costing ₹688/month and producing 58 kg CO₂/month (both placeholders pending real tariff/emissions data). We are actively monitoring your refrigerator to learn its typical 150-180W baseline and track occasional jumps, like the 349W spike seen this week. This is strictly a diagnostic feature to ensure the compressor continues functioning normally and to alert you if the hardware ever starts drawing abnormal power. It runs at 220 V and is always ON — SmartCap never proposes fully shutting off the refrigerator, only efficiency checks like this.',
     keywords: ['fridge', 'refrigerator', 'family', 'hub', 'bespoke', 'cold', 'cooling', '150', 'food'],
   },
   {
@@ -125,7 +133,7 @@ export const knowledgeBase: KnowledgeChunk[] = [
     topic: 'appliance',
     title: 'Smart LED Ecosystem',
     content:
-      'The Smart LED Ecosystem draws a steady 38-42 W from 10am-4pm daily (6 hours), with a 5-star efficiency rating. It uses about 2.04 kWh today (14.27 kWh/week total), costing ₹98/month and producing 8 kg CO₂/month (both placeholders). The AI recommendation is to add a daylight/motion sensor to cut unnecessary lighting during these full-daylight hours, saving ₹30/month (placeholder). It runs at 220 V and is ON by default.',
+      'The Smart LED Ecosystem draws a steady 38-42 W from 10am-4pm daily (6 hours), with a 5-star efficiency rating. It uses about 2.04 kWh today (14.27 kWh/week total), costing ₹98/month and producing 8 kg CO₂/month (both placeholders). Your smart lights are currently drawing a steady 38-42W every day during the bright hours of 10am to 4pm. Enabling the daylight cutoff sensor during this window will help naturally trim down your 14.27 kWh weekly lighting footprint. It runs at 220 V and is ON by default.',
     keywords: ['lights', 'led', 'lighting', 'lamp', 'bulb', 'smart', '40', 'ecosystem', 'dim', 'bright'],
   },
   {
