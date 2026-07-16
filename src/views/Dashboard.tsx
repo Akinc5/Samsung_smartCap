@@ -1,6 +1,9 @@
-import { Zap, Home, Sparkles, CheckCircle2, TrendingDown } from 'lucide-react';
+import { useState } from 'react';
+import { Zap, Home, Sparkles, CheckCircle2, TrendingDown, Plus, Trash2, X } from 'lucide-react';
 import type { Appliance, Automation, Insight } from '../types';
 import { StarIcon } from '../components/StarIcon';
+import { CreateCardModal } from '../components/CreateCardModal';
+import { RuleSourceBadge } from '../components/RuleSourceBadge';
 
 interface DashboardProps {
   appliances: Appliance[];
@@ -10,6 +13,10 @@ interface DashboardProps {
   onToggleAppliance: (id: string) => void;
   onToggleAutomation: (id: string) => void;
   onSelectAutomation: (automation: Automation) => void;
+  onAddCard: (appliance: Appliance, autos: Automation[], liveCallFailed?: boolean) => void;
+  onDeleteCard: (id: string) => void;
+  dashboardNotice: { message: string; tone: 'success' | 'warning' } | null;
+  onDismissDashboardNotice: () => void;
 }
 
 export function Dashboard({
@@ -20,7 +27,12 @@ export function Dashboard({
   onToggleAppliance,
   onToggleAutomation,
   onSelectAutomation,
+  onAddCard,
+  onDeleteCard,
+  dashboardNotice,
+  onDismissDashboardNotice,
 }: DashboardProps) {
+  const [isCreatingCard, setIsCreatingCard] = useState(false);
   const currentDrawWatts = appliances.reduce((acc, app) => acc + (app.status === 'ON' ? app.baseWatts : 0), 0);
   const totalDailyKwh = appliances.reduce((acc, app) => acc + app.todayKwh, 0).toFixed(1);
   const totalMonthlyCost = appliances.reduce((acc, app) => acc + app.costMonthly, 0);
@@ -41,6 +53,25 @@ export function Dashboard({
           Monitor, Optimize, and Save Power
         </p>
       </header>
+
+      {/* Dashboard notice banner — card deletion confirmations (success) and
+          Coach Agent live-call-failure heads-ups (warning) share this one banner,
+          so the messaging is visually consistent across every call site. */}
+      {dashboardNotice && (
+        <div
+          className={`flex items-center justify-between gap-3 border-4 rounded-2xl px-5 py-3 shadow-[0_6px_0_0_#2D3436] ${
+            dashboardNotice.tone === 'success' ? 'bg-[#D5F5E3] border-[#2ECC71]' : 'bg-[#FFF3CD] border-[#F1C40F]'
+          }`}
+        >
+          <p className="text-sm font-bold text-[#2D3436]">{dashboardNotice.message}</p>
+          <button
+            onClick={onDismissDashboardNotice}
+            className="shrink-0 w-8 h-8 bg-white border-2 border-[#2D3436] rounded-full flex items-center justify-center hover:translate-y-0.5 transition-all"
+          >
+            <X className="w-4 h-4 text-[#2D3436]" strokeWidth={3} />
+          </button>
+        </div>
+      )}
 
       {/* TOP SECTION: Live Energy Summary */}
       <section className="bg-white border-4 border-[#2D3436] rounded-[32px] p-6 md:p-10 shadow-[0_12px_0_0_#2D3436] relative overflow-hidden">
@@ -98,33 +129,47 @@ export function Dashboard({
                 onClick={() => onSelectAppliance(app)}
                 className={`toy-card relative flex flex-col p-6 ${app.status === 'OFF' ? 'status-off' : ''}`}
               >
-                {/* Status Toggle (Top Right) */}
-                <div
-                  className="absolute top-4 right-4 z-10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleAppliance(app.id);
-                  }}
-                >
-                  {app.status === 'ON' ? (
-                    <div className="w-12 h-6 bg-[#2ECC71] rounded-full border-2 border-[#2D3436] flex items-center p-1 cursor-pointer transition-colors shadow-sm">
-                      <div className="w-4 h-4 bg-white rounded-full border-2 border-[#2D3436] transform translate-x-5 transition-transform" />
-                    </div>
-                  ) : (
-                    <div className="w-12 h-6 bg-[#A4B0BE] rounded-full border-2 border-[#2D3436] flex items-center p-1 cursor-pointer transition-colors shadow-sm">
-                      <div className="w-4 h-4 bg-white rounded-full border-2 border-[#2D3436] transform translate-x-0 transition-transform" />
-                    </div>
-                  )}
+                {/* Status Toggle + Delete (Top Right) */}
+                <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteCard(app.id);
+                    }}
+                    className="w-6 h-6 bg-white border-2 border-[#2D3436] rounded-full flex items-center justify-center hover:bg-red-50 transition-colors"
+                    title={`Remove ${app.name}`}
+                  >
+                    <Trash2 className="w-3 h-3 text-[#E74C3C]" />
+                  </button>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleAppliance(app.id);
+                    }}
+                  >
+                    {app.status === 'ON' ? (
+                      <div className="w-12 h-6 bg-[#2ECC71] rounded-full border-2 border-[#2D3436] flex items-center p-1 cursor-pointer transition-colors shadow-sm">
+                        <div className="w-4 h-4 bg-white rounded-full border-2 border-[#2D3436] transform translate-x-5 transition-transform" />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-6 bg-[#A4B0BE] rounded-full border-2 border-[#2D3436] flex items-center p-1 cursor-pointer transition-colors shadow-sm">
+                        <div className="w-4 h-4 bg-white rounded-full border-2 border-[#2D3436] transform translate-x-0 transition-transform" />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Efficiency Rating (Top Left) */}
-                <div className="absolute top-4 left-4 flex gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <StarIcon key={i} filled={i < app.efficiency} />
-                  ))}
+                <div className="absolute top-4 left-4 flex flex-col gap-1 items-start">
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <StarIcon key={i} filled={i < app.efficiency} />
+                    ))}
+                  </div>
+                  <RuleSourceBadge source={app.ruleSource} />
                 </div>
 
-                <div className="flex flex-col items-center mt-8 space-y-4">
+                <div className="flex flex-col items-center mt-14 space-y-4">
                   <div className="w-20 h-20 rounded-full border-4 border-[#2D3436] flex items-center justify-center bg-white shadow-[0_4px_0_0_#2D3436]">
                     <Icon className="w-10 h-10" style={{ color: app.status === 'ON' ? app.accent : '#A4B0BE' }} />
                   </div>
@@ -155,8 +200,23 @@ export function Dashboard({
               </div>
             );
           })}
+
+          {/* Add Card tile */}
+          <button
+            onClick={() => setIsCreatingCard(true)}
+            className="flex flex-col items-center justify-center gap-3 p-6 rounded-[24px] border-4 border-dashed border-slate-300 hover:border-[#9B59B6] hover:bg-purple-50 transition-colors min-h-[280px]"
+          >
+            <div className="w-16 h-16 rounded-full border-4 border-dashed border-slate-300 flex items-center justify-center">
+              <Plus className="w-8 h-8 text-slate-400" />
+            </div>
+            <span className="text-sm font-black uppercase text-slate-400">Add Card</span>
+          </button>
         </div>
       </section>
+
+      {isCreatingCard && (
+        <CreateCardModal onClose={() => setIsCreatingCard(false)} onCreate={onAddCard} />
+      )}
 
       {/* AUTOMATIONS & INSIGHTS */}
       <section className="space-y-12 pb-12">
@@ -176,7 +236,10 @@ export function Dashboard({
                 }`}
               >
                 <div className="flex-1 pr-4">
-                  <h3 className="text-xl font-black text-[#2D3436] mb-1">{auto.name}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-xl font-black text-[#2D3436]">{auto.name}</h3>
+                    <RuleSourceBadge source={auto.ruleSource} />
+                  </div>
                   <p className="text-sm font-bold text-slate-500 mb-2 leading-tight">{auto.desc}</p>
                   <span className="inline-block bg-[#D5F5E3] text-[#2ECC71] border-2 border-[#2ECC71] px-3 py-1 rounded-lg text-xs font-black uppercase">
                     Est. Saving: {auto.savingVal}

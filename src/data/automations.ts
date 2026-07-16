@@ -1,4 +1,5 @@
 import type { Automation } from '../types';
+import { checkShutoffGuard } from '../utils/guardrail';
 
 export const initialAutomations: Automation[] = [
   {
@@ -11,6 +12,8 @@ export const initialAutomations: Automation[] = [
     tradeoff: 'Maintains safe cooling for Indian summer heat; this is a mode change, not a shutoff. Savings % is an industry estimate, not directly measured — no outdoor temperature data in this dataset.',
     savingVal: '43.9 kWh/week exposure (21% of AC\'s weekly use)', // TODO: ₹ saving pending real tariff rate
     active: false,
+    ruleSource: 'measured',
+    applianceIds: ['ac'],
   },
   {
     id: 'heater_stagger',
@@ -22,6 +25,8 @@ export const initialAutomations: Automation[] = [
     tradeoff: 'Minor shift in hot water availability timing.',
     savingVal: 'No added kWh — reduces peak-hour overlap (~2,770W morning / ~1,777W evening)', // TODO: ₹ saving pending real tariff rate
     active: false,
+    ruleSource: 'measured',
+    applianceIds: ['heater', 'ac'],
   },
   {
     id: 'laundry_stagger',
@@ -33,6 +38,8 @@ export const initialAutomations: Automation[] = [
     tradeoff: 'Reduces laundry scheduling flexibility.',
     savingVal: '~40% peak-demand spike avoided (6,777W/6,703W vs ~4,700W typical)', // TODO: ₹ saving pending real tariff rate
     active: false,
+    ruleSource: 'measured',
+    applianceIds: ['washer', 'heater'],
   },
   {
     id: 'lights_daylight',
@@ -44,6 +51,8 @@ export const initialAutomations: Automation[] = [
     tradeoff: 'Small individual saving; low-cost, easy automation.',
     savingVal: '14.27 kWh/week exposure (38-42W, 10am-4pm daily)', // TODO: ₹ saving pending real tariff rate
     active: false,
+    ruleSource: 'measured',
+    applianceIds: ['lights'],
   },
   {
     id: 'fridge_alert',
@@ -55,19 +64,21 @@ export const initialAutomations: Automation[] = [
     tradeoff: 'None — alert only, explicitly not a savings claim.',
     savingVal: 'N/A — alert only, not a savings claim',
     active: false,
+    ruleSource: 'measured',
+    applianceIds: ['fridge'],
   },
 ];
 
 // Hard rule (CLAUDE.md): no automation may propose full shutoff of the AC or
 // refrigerator (heat-safety constraint — India, 40°C+ summers). Mode/setpoint
 // changes only. Enforced here, not just documented, so a future rule that
-// violates it fails fast instead of silently reaching the UI.
-const FULL_SHUTOFF_PATTERNS = [/turn off (the )?(ac|air conditioner|refrigerator|fridge)\b/i, /shut ?off.*(ac|air conditioner|refrigerator|fridge)/i, /disable.*(ac|air conditioner|refrigerator|fridge).*(power|permanently|entirely)/i];
-
+// violates it fails fast instead of silently reaching the UI. Runtime-generated
+// automations (Coach Agent output) are checked the same way via checkShutoffGuard
+// directly in src/utils/coachAgent.ts, but without throwing — a live user session
+// must not crash on a bad generated rule the way this module-load check is allowed to.
 initialAutomations.forEach((auto) => {
-  const text = [auto.name, auto.why, auto.evidence, auto.tradeoff].join(' ');
-  const violation = FULL_SHUTOFF_PATTERNS.find((pattern) => pattern.test(text));
-  if (violation) {
+  const result = checkShutoffGuard([auto.name, auto.why, auto.evidence, auto.tradeoff, auto.savingVal, auto.desc]);
+  if (!result.passed) {
     throw new Error(`Automation "${auto.id}" appears to propose a full AC/refrigerator shutoff, which violates the heat-safety hard rule in CLAUDE.md.`);
   }
 });

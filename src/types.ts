@@ -7,6 +7,8 @@ export interface AppliancePosition {
   left: string;
 }
 
+export type RuleSource = 'measured' | 'generic';
+
 export interface Appliance {
   id: string;
   name: string;
@@ -17,6 +19,7 @@ export interface Appliance {
   baseWatts: number;
   todayKwh: number;
   monthlyKwh: number;
+  weeklyKwh: number;
   costMonthly: number;
   icon: LucideIcon;
   recommendation: string;
@@ -26,6 +29,9 @@ export interface Appliance {
   carbon: string;
   savings: string;
   pos: AppliancePosition;
+  ruleSource: RuleSource;
+  notes?: string;
+  photo?: string;
 }
 
 export interface Automation {
@@ -38,6 +44,8 @@ export interface Automation {
   evidence: string;
   confidence: string;
   tradeoff: string;
+  ruleSource: RuleSource;
+  applianceIds: string[];
 }
 
 export interface Insight {

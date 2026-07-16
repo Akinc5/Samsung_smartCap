@@ -1,5 +1,6 @@
 import { X, CheckCircle2, Power } from 'lucide-react';
 import type { Automation } from '../types';
+import { RuleSourceBadge } from './RuleSourceBadge';
 
 interface AutomationModalProps {
   automation: Automation;
@@ -30,6 +31,10 @@ export function AutomationModal({ automation, onClose, onToggle }: AutomationMod
           >
             {automation.active ? 'Active' : 'Inactive'}
           </span>
+
+          <div className="flex items-center gap-2 mb-2">
+            <RuleSourceBadge source={automation.ruleSource} />
+          </div>
 
           <h2 className="text-2xl font-black text-[#2D3436] tracking-tight text-center mb-6 leading-tight">
             {automation.name}

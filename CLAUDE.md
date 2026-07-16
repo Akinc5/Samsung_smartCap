@@ -59,18 +59,43 @@ or read them from `src/data/household.json` once that file exists.
 ## Hard Rules
 
 - Never generate or allow a rule/automation that proposes full shutoff of the AC or refrigerator
-  (heat-safety constraint — India, 40°C+ summers). Mode/setpoint changes only.
-- Every `Automation` and every Coach Agent output must reference a real number from the table above.
-  If a proposed rule can't be traced to one, reject it before it reaches the UI.
+  (heat-safety constraint — India, 40°C+ summers). Mode/setpoint changes only. Enforced at
+  runtime by `checkShutoffGuard` (`src/utils/guardrail.ts`), called both at module-load over the
+  static `automations.ts` array and at runtime over every Coach Agent-generated automation and
+  chatbot answer before it reaches the UI.
+- Every `Automation` and every Coach Agent output must reference a real number from the table above
+  **when `ruleSource === 'measured'`**. **Exception**: a `ruleSource: 'generic'` card (user-created
+  via the Coach Agent's product-lookup flow, see below) may show an AI-estimated wattage/category
+  guidance number instead — this is allowed specifically because it's clearly labeled as an
+  estimate (badge + confidence text: "Based on published specs for X" or "No specific data found —
+  showing typical X guidance"), never presented as if it were measured. Fabricating a number
+  *without* that labeling is still forbidden.
 - `EnergyRank.tsx`'s local `STATS`/`ACHIEVEMENTS` constants are placeholder — XP/score should
   eventually derive from real weekly kWh-saved, not be hardcoded.
 
-## Planned Architecture (not yet implemented)
+## Planned Architecture
 
-- Deterministic EDA (plain JS/TS, not the agent) computes summary stats from household data.
-- Coach Agent = Gemini API call, two modes:
-  - Setup mode: summary stats → generates `Automation[]` (replaces `automations.ts` seed data)
-  - Play mode: game event → one-line grounded feedback
-  - The agent is prompted with fresh context per household, never fine-tuned/trained.
+The Coach Agent is now implemented (`src/utils/coachAgent.ts`) — a client-side Gemini wrapper,
+**not** a backend proxy. This is a deliberate scope tradeoff for a 5-day capstone: the Gemini API
+key (`VITE_GEMINI_API_KEY`) is called directly from the browser, baked into the client bundle at
+build time exactly like `VITE_KIRI_API_KEY` already was (see `KiriScanner.jsx`'s exposure-disclosure
+comment) — visible in the shipped JS via devtools. **Do not add a backend proxy for this without
+asking first** — if key protection genuinely matters later, that's a real architecture change, not
+a quick fix. Three modes, one wrapper (`callGemini(prompt, useSearch)`):
+- **Product-lookup mode** (`lookupProduct`, `useSearch: true`) — used when a user creates a new
+  appliance card by name; searches for the specific product's published specs, or falls back to
+  category-level generic guidance if nothing specific/unambiguous is found.
+- **Setup mode** (`generateAutomations`, `useSearch: false`) — generates 1-2 `Automation`s for a
+  *new* card only, from its product-lookup result. **Never regenerates the 5 real, hardened
+  `ruleSource: 'measured'` automations in `automations.ts`** — those stay exactly as verified.
+- **Chatbot mode** (`chatbotSynthesize`, `useSearch: false`) — writes the chatbot's final answer
+  from live-retrieved context (`src/utils/liveKnowledge.ts`, built fresh from the current
+  `appliances`/`automations` state), only once the existing local Layer 0/1/2 routing
+  (greeting/identity/domain-vocab/relevance) has already accepted the query — those stay 100%
+  local and free, unchanged.
+- No key configured (`VITE_GEMINI_API_KEY` unset) → every mode falls back to a deterministic mock
+  (product-lookup always resolves "generic, nothing found"; chatbot mode returns `null` and the
+  caller uses the existing local template answer) — the whole app works with zero live calls.
 - Game loop (not started): 7 rounds = 7 real days, control points spent on abilities per round,
-  combo penalty when overlapping high-draw appliances fire in the same hour.
+  combo penalty when overlapping high-draw appliances fire in the same hour. Explicitly out of
+  scope for the Coach Agent work above.

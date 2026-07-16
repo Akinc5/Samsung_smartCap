@@ -132,7 +132,7 @@ const IDENTITY_PATTERNS = [
 
 // ── Response synthesis ────────────────────────────────────
 // Combines the content of the top-K chunks into a coherent reply.
-function synthesise(query: string, chunks: KnowledgeChunk[]): string {
+function synthesise(query: string, chunks: KnowledgeChunk[], allChunks: KnowledgeChunk[]): string {
   if (chunks.length === 0) return REFUSALS[0];
 
   const primary = chunks[0];
@@ -149,8 +149,8 @@ function synthesise(query: string, chunks: KnowledgeChunk[]): string {
   // Add a follow-up hint if there's a clearly related chunk
   const queryLower = query.toLowerCase();
   if (queryLower.includes('save') || queryLower.includes('money') || queryLower.includes('cost')) {
-    const faqSave = knowledgeBase.find((c) => c.id === 'faq_save_money');
-    if (faqSave && !chunks.find((c) => c.id === 'faq_save_money')) {
+    const faqSave = allChunks.find((c) => c.id === 'live_faq_save_money');
+    if (faqSave && !chunks.find((c) => c.id === 'live_faq_save_money')) {
       answer += '\n\n💡 Tip: ' + faqSave.content;
     }
   }
@@ -166,9 +166,10 @@ export interface RAGResult {
   isOffTopic: boolean;
 }
 
-export function ragQuery(userQuery: string): RAGResult {
+export function ragQuery(userQuery: string, liveChunks: KnowledgeChunk[]): RAGResult {
   const trimmedQuery = userQuery.trim();
   const queryTokens = tokenise(trimmedQuery);
+  const allChunks = [...knowledgeBase, ...liveChunks];
 
   // ── Intent Layer 0: Greeting detection ───────────────
   if (GREETING_PATTERNS.some((p) => p.test(trimmedQuery))) {
@@ -201,8 +202,8 @@ export function ragQuery(userQuery: string): RAGResult {
     };
   }
 
-  // ── Retrieve: score all chunks ────────────────────────
-  const scored = knowledgeBase
+  // ── Retrieve: score all chunks (static + live) ────────
+  const scored = allChunks
     .map((chunk) => ({ chunk, score: scoreChunk(queryTokens, chunk) }))
     .sort((a, b) => b.score - a.score);
 
@@ -220,7 +221,7 @@ export function ragQuery(userQuery: string): RAGResult {
   }
 
   const relevantChunks = topChunks.filter((t) => t.score > 0).map((t) => t.chunk);
-  const answer = synthesise(userQuery, relevantChunks);
+  const answer = synthesise(userQuery, relevantChunks, allChunks);
 
   return {
     answer,

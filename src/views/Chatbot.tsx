@@ -1,6 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Bot, User, AlertTriangle, Sparkles, Zap, Home, Award, Box, RotateCcw } from 'lucide-react';
 import { ragQuery, RAGResult } from '../utils/ragEngine';
+import { buildLiveChunks } from '../utils/liveKnowledge';
+import { chatbotSynthesize } from '../utils/coachAgent';
+import { checkShutoffGuard } from '../utils/guardrail';
+import type { Appliance, Automation } from '../types';
+
+const SAFE_FALLBACK_MESSAGE =
+  "I can't share that suggestion — it would fully shut off the AC or refrigerator, which SmartCap never recommends for safety. Let me know if you'd like a mode/schedule change instead.";
 
 // ── Types ──────────────────────────────────────────────────
 type MessageRole = 'user' | 'bot' | 'system';
@@ -53,21 +60,43 @@ function parseMarkdown(text: string): React.ReactNode[] {
   });
 }
 
+interface ChatbotProps {
+  appliances: Appliance[];
+  automations: Automation[];
+}
+
 // ── Component ─────────────────────────────────────────────
-export function Chatbot() {
+export function Chatbot({ appliances, automations }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [suggestionsVisible, setSuggestionsVisible] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Captured once at construction (React ignores later calls to a useRef
+  // initializer) — the message count at mount, before any messages are added.
+  const initialMessageCount = useRef(messages.length);
 
-  // Auto-scroll to bottom on new message
+  // Rebuilt fresh from live state on every appliances/automations change, so the
+  // chatbot never references a card that's been edited/deleted, or misses one
+  // that's just been added.
+  const liveChunks = useMemo(() => buildLiveChunks(appliances, automations), [appliances, automations]);
+
+  // Auto-scroll to bottom on new message — but not on the initial mount, when
+  // there's nothing to scroll to yet (just the welcome message). scrollIntoView
+  // would otherwise scroll the whole page (not just this message list) down by
+  // whatever overflow exists on first render, opening the view already scrolled.
+  // Deliberately checks actual message count rather than a toggled "first
+  // render" flag — React.StrictMode double-invokes mount effects in dev, which
+  // would defeat a simple boolean flip (it flips on the first of the two
+  // invocations, so the second would still fire the scroll).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > initialMessageCount.current || isTyping) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, isTyping]);
 
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
 
@@ -84,21 +113,44 @@ export function Chatbot() {
     setInput('');
     setIsTyping(true);
 
-    // Simulate a short "thinking" delay for natural UX
-    const delay = 600 + Math.random() * 700;
-    setTimeout(() => {
-      const result: RAGResult = ragQuery(trimmed);
-      const botMsg: Message = {
-        id: uid(),
-        role: 'bot',
-        text: result.answer,
-        isOffTopic: result.isOffTopic,
-        sources: result.sources.map((s) => s.title),
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botMsg]);
-      setIsTyping(false);
-    }, delay);
+    // Minimum "thinking" delay for natural UX, overlapped with (not additive to)
+    // any real Gemini network latency.
+    const minDelay = new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 400));
+
+    const work = (async () => {
+      const result: RAGResult = ragQuery(trimmed, liveChunks);
+      let finalAnswer = result.answer;
+
+      // Layer 0/1/2 short-circuits (greeting/identity/off-topic) return no
+      // sources — nothing to synthesize, and no Gemini call is made, exactly
+      // as before. Only a genuine on-topic retrieval gets a live-written answer.
+      if (result.sources.length > 0) {
+        try {
+          const liveAnswer = await chatbotSynthesize(trimmed, result.sources);
+          if (liveAnswer) finalAnswer = liveAnswer; // null in mock mode — keep local template answer
+        } catch (err) {
+          console.error(err); // keep the local template answer on a live-call error
+        }
+      }
+
+      const guard = checkShutoffGuard([finalAnswer]);
+      if (!guard.passed) finalAnswer = SAFE_FALLBACK_MESSAGE;
+
+      return { finalAnswer, result };
+    })();
+
+    const [{ finalAnswer, result }] = await Promise.all([work, minDelay]);
+
+    const botMsg: Message = {
+      id: uid(),
+      role: 'bot',
+      text: finalAnswer,
+      isOffTopic: result.isOffTopic,
+      sources: result.sources.map((s) => s.title),
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, botMsg]);
+    setIsTyping(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
