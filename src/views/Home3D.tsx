@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Moon, Sun } from 'lucide-react';
+import { Sparkles, Upload } from 'lucide-react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -8,27 +8,25 @@ import type { Appliance } from '../types';
 
 interface Home3DProps {
   appliances: Appliance[];
-  isNightMode: boolean;
-  onToggleNightMode: () => void;
   onSelectAppliance?: React.Dispatch<React.SetStateAction<Appliance | null>>;
 }
 
-export function Home3D({ appliances, isNightMode, onToggleNightMode, onSelectAppliance }: Home3DProps) {
+export function Home3D({ appliances, onSelectAppliance }: Home3DProps) {
   const [globalModelUrl, setGlobalModelUrl] = useState<string>('/models/appartement.glb');
-  const [globalCustomManager, setGlobalCustomManager] = useState<any>(null);
+  const [globalCustomManager, setGlobalCustomManager] = useState<THREE.LoadingManager | null>(null);
   const [sceneTheme, setSceneTheme] = useState<'midnight' | 'sunrise' | 'grey'>('midnight');
 
   const sceneBackgrounds: Record<string, { container: string; floor: string; accent: string }> = {
-   midnight: { container: '#000000', floor: '#1a1a1a', accent: '#ffffff' }, // Black, dark grey, white
-  sunrise: { container: '#ffffff', floor: '#f2f2f2', accent: '#000000' },   // White, light grey, black
-  grey: { container: '#808080', floor: '#cccccc', accent: '#333333' },     // Mid-grey, light grey, dark grey
+    midnight: { container: '#000000', floor: '#1a1a1a', accent: '#ffffff' }, // Black, dark grey, white
+    sunrise: { container: '#ffffff', floor: '#f2f2f2', accent: '#000000' },   // White, light grey, black
+    grey: { container: '#808080', floor: '#cccccc', accent: '#333333' },     // Mid-grey, light grey, dark grey
   };
 
   const activeScene = sceneBackgrounds[sceneTheme];
 
   return (
-    <div className={`space-y-6 animate-fade-in ${isNightMode ? 'night-mode' : ''} transition-colors duration-1000 w-full mx-auto p-4`}>
-      
+    <div className="space-y-6 animate-fade-in transition-colors duration-1000 w-full mx-auto p-4">
+
       {/* Neo-Brutalist Header Control Panel */}
       <header className="flex flex-col gap-3 pt-4 md:flex-row md:items-center md:justify-between">
         <div className="inline-block bg-white border-4 border-[#2D3436] rounded-2xl px-6 py-2 shadow-[0_6px_0_0_rgba(0,0,0,0.2)]">
@@ -50,25 +48,28 @@ export function Home3D({ appliances, isNightMode, onToggleNightMode, onSelectApp
               {theme === 'midnight' ? 'Midnight' : theme === 'sunrise' ? 'sunrise' : 'grey'}
             </button>
           ))}
-          <button
-            onClick={onToggleNightMode}
-            className="w-11 h-11 bg-white border-4 border-[#2D3436] rounded-full flex items-center justify-center shadow-[0_4px_0_0_#2D3436] hover:translate-y-1 hover:shadow-none transition-all"
+
+          {/* Visible trigger for the hidden zip input (was previously unreachable) */}
+          <label
+            htmlFor="zipUpload"
+            className="cursor-pointer flex items-center gap-2 bg-white border-4 border-[#2D3436] rounded-2xl px-3 py-2 text-xs font-black uppercase tracking-[0.2em] shadow-[0_4px_0_0_#2D3436] hover:translate-y-1 hover:shadow-none transition-all"
           >
-            {isNightMode ? <Sun className="w-5 h-5 text-[#F1C40F]" /> : <Moon className="w-5 h-5 text-[#3498DB]" />}
-          </button>
+            <Upload className="w-4 h-4" />
+            Custom Model
+          </label>
         </div>
       </header>
 
-      {/* 3D Map Container Frame */}
+      {/* 3D Map Container Frame — expanded on X axis only to give the model more room */}
       <div
-        className="relative w-full h-[500px] md:h-[600px] rounded-[32px] border-4 border-[#2D3436] shadow-inner overflow-hidden flex items-center justify-center transition-colors duration-1000"
+        className="relative w-[calc(100%+96px)] -mx-12 h-[500px] md:h-[600px] rounded-[32px] border-4 border-[#2D3436] shadow-inner overflow-hidden flex items-center justify-center transition-colors duration-1000"
         style={{ backgroundColor: activeScene.container }}
       >
-        
-        {/* Real Interactive WebGL Room Canvas Canvas Layer */}
+
+        {/* Real Interactive WebGL Room Canvas Layer */}
         <div className="absolute inset-0 z-0">
-          <ThreeDViewEngine 
-            appliances={appliances} 
+          <ThreeDViewEngine
+            appliances={appliances}
             modelUrl={globalModelUrl}
             customManager={globalCustomManager}
             onModelChange={(url, manager) => {
@@ -110,14 +111,26 @@ export function Home3D({ appliances, isNightMode, onToggleNightMode, onSelectApp
 interface ThreeDViewEngineProps {
   appliances: Appliance[];
   modelUrl: string;
-  customManager: any;
-  onModelChange: (url: string, manager: any) => void;
+  customManager: THREE.LoadingManager | null;
+  onModelChange: (url: string, manager: THREE.LoadingManager | null) => void;
   background: { container: string; floor: string; accent: string };
 }
 
-function ThreeDViewEngine({ modelUrl, customManager, onModelChange, background }: ThreeDViewEngineProps) {
+// Map appliance ids/names -> the light object names created in the scene.
+// Adjust these keys to match however `appliances` identifies each device.
+const APPLIANCE_LIGHT_MAP: Record<string, string> = {
+  tv: 'SmartTVLight',
+  lighting: 'LightingLight',
+  ac: 'AirConditionerLight',
+  airconditioner: 'AirConditionerLight',
+  waterheater: 'WaterHeaterLight',
+};
+
+function ThreeDViewEngine({ appliances, modelUrl, customManager, onModelChange, background }: ThreeDViewEngineProps) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<any>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const accentLightRef = useRef<THREE.PointLight | null>(null);
+  const blobUrlsRef = useRef<string[]>([]);
   const [loadingStatus, setLoadingStatus] = useState<string>('');
 
   // Unpacker engine configuration mapping zipped asset bundles
@@ -126,24 +139,29 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, background }
     if (!file) return;
 
     setLoadingStatus('Unpacking Smart-Home Zip Asset Bundle...');
-    
+
     try {
       const zip = new JSZip();
       const contents = await zip.loadAsync(file);
-      
+
       let mainFile: any = null;
       const fileMap: Record<string, string> = {};
+      const newBlobUrls: string[] = [];
 
       for (let relativePath in contents.files) {
         const zipEntry = contents.files[relativePath];
         if (zipEntry.dir) continue;
 
+        // Prefer a root-level (no folder separator) model file if multiple exist
         if (relativePath.endsWith('.gltf') || relativePath.endsWith('.glb')) {
-          mainFile = zipEntry;
+          if (!mainFile || !relativePath.includes('/')) {
+            mainFile = zipEntry;
+          }
         }
 
         const blob = await zipEntry.async('blob');
         const virtualUrl = URL.createObjectURL(blob);
+        newBlobUrls.push(virtualUrl);
         fileMap[relativePath] = virtualUrl;
 
         const filename = relativePath.split('/').pop();
@@ -153,6 +171,7 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, background }
       if (!mainFile) {
         alert("Could not locate a valid internal model file extension (.glb or .gltf) within the Zip folder structure.");
         setLoadingStatus('');
+        newBlobUrls.forEach(url => URL.revokeObjectURL(url));
         return;
       }
 
@@ -174,6 +193,11 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, background }
 
       const finalModelBlob = await mainFile.async('blob');
       const finalModelUrl = URL.createObjectURL(finalModelBlob);
+      newBlobUrls.push(finalModelUrl);
+
+      // Revoke the previous batch of blob URLs now that we're replacing them
+      blobUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+      blobUrlsRef.current = newBlobUrls;
 
       onModelChange(finalModelUrl, manager);
     } catch (err) {
@@ -183,25 +207,34 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, background }
     }
   };
 
+  // Revoke any outstanding blob URLs when the component unmounts
+  useEffect(() => {
+    return () => {
+      blobUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+      blobUrlsRef.current = [];
+    };
+  }, []);
+
+  // Main scene setup — rebuilds on model change
   useEffect(() => {
     if (!mountRef.current) return;
-    
+
     // 1. Core WebGL Setup
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    
+
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    
+
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.top = '0';
     renderer.domElement.style.left = '0';
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
-    
+
     mountRef.current.innerHTML = '';
     mountRef.current.appendChild(renderer.domElement);
 
@@ -217,13 +250,15 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, background }
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    controls.minDistance = 3;
+    controls.maxDistance = 40;
 
     // 3. Responsive Proportional Scaler Window Resize Observer
     const resizeObserver = new ResizeObserver((entries) => {
       for (let entry of entries) {
         const { width, height } = entry.contentRect;
         if (width === 0 || height === 0) continue;
-        
+
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
         renderer.setSize(width, height, false);
@@ -255,32 +290,40 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, background }
     const accentGlow = new THREE.PointLight(new THREE.Color(background.accent), 8, 24);
     accentGlow.position.set(0, 4, 0);
     scene.add(accentGlow);
+    accentLightRef.current = accentGlow;
+
+    // Apply initial appliance ON/OFF state to the status lights
+    applyApplianceLights(scene, appliances);
 
     // 5. Asynchronous GLTF Structural File Loader
     const activeManager = customManager || new THREE.LoadingManager();
     const loader = new GLTFLoader(activeManager);
+
+    let wrapperGroup: THREE.Group | null = null;
 
     if (modelUrl) {
       setLoadingStatus('Compiling interior space layout...');
       loader.load(
         modelUrl,
         (gltf: any) => {
-          setLoadingStatus('');
-          
           const box = new THREE.Box3().setFromObject(gltf.scene);
           const center = box.getCenter(new THREE.Vector3());
           const size = box.getSize(new THREE.Vector3());
-          
+
           gltf.scene.position.x = -center.x;
           gltf.scene.position.y = -box.min.y;
           gltf.scene.position.z = -center.z;
-          
-          const wrapperGroup = new THREE.Group();
+
+          wrapperGroup = new THREE.Group();
           wrapperGroup.add(gltf.scene);
 
           const maxDim = Math.max(size.x, size.y, size.z);
           const scale = 7 / maxDim;
           wrapperGroup.scale.multiplyScalar(scale);
+
+          // move the whole model down a bit
+          wrapperGroup.position.y -= 0.6; // increase/decrease this to taste
+
           scene.add(wrapperGroup);
           setLoadingStatus('');
         },
@@ -302,13 +345,45 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, background }
     };
     animate();
 
-    // Cleanup
+    // Cleanup — dispose geometries/materials/textures before next rebuild
     return () => {
       cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
+      controls.dispose();
+
+      scene.traverse((obj: any) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach((m: any) => {
+            Object.values(m).forEach((v: any) => {
+              if (v && v.isTexture) v.dispose();
+            });
+            m.dispose();
+          });
+        }
+      });
+
       renderer.dispose();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelUrl, customManager]);
+
+  // Lightweight effect: update accent light color when the theme changes,
+  // without rebuilding/reloading the whole scene and model.
+  useEffect(() => {
+    if (accentLightRef.current) {
+      accentLightRef.current.color = new THREE.Color(background.accent);
+    }
+  }, [background.accent]);
+
+  // Lightweight effect: reflect appliance ON/OFF state on the status lights
+  // without rebuilding the whole scene.
+  useEffect(() => {
+    if (sceneRef.current) {
+      applyApplianceLights(sceneRef.current, appliances);
+    }
+  }, [appliances]);
 
   return (
     <div className="w-full h-full relative">
@@ -321,13 +396,28 @@ function ThreeDViewEngine({ modelUrl, customManager, onModelChange, background }
           </div>
         </div>
       )}
-      <input 
-        type="file" 
-        accept=".zip" 
-        onChange={handleZipUpload} 
+      <input
+        type="file"
+        accept=".zip"
+        onChange={handleZipUpload}
         className="hidden"
         id="zipUpload"
       />
     </div>
   );
+}
+
+// Turns each appliance's ON/OFF status into the matching point light's intensity.
+// Update APPLIANCE_LIGHT_MAP above if your Appliance id/type values differ.
+function applyApplianceLights(scene: THREE.Scene, appliances: Appliance[]) {
+  appliances.forEach((app: any) => {
+    const key = String(app.id ?? app.type ?? app.name ?? '').toLowerCase().replace(/\s+/g, '');
+    const lightName = APPLIANCE_LIGHT_MAP[key];
+    if (!lightName) return;
+
+    const light = scene.getObjectByName(lightName) as THREE.PointLight | undefined;
+    if (light) {
+      light.intensity = app.status === 'ON' ? 2.5 : 0;
+    }
+  });
 }
