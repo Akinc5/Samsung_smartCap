@@ -257,7 +257,7 @@ export function Dashboard({
                 >
                   <span
                     className={`absolute top-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-4 border-[#2D3436] bg-white transition-transform duration-300 shadow-sm ${
-                      auto.active ? 'left-[calc(100%-8px)] -translate-x-100 transform translate-x-10' : 'left-1'
+                      auto.active ? 'left-[calc(55%)] ' : 'left-1'
                     }`}
                   />
                 </button>
