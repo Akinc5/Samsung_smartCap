@@ -7,6 +7,7 @@ import { Dashboard } from './views/Dashboard';
 import { EnergyRank } from './views/EnergyRank';
 import { Home3D } from './views/Home3D';
 import { GameView } from './views/GameView';
+import { Discover } from './views/Discover';
 import { ApplianceModal } from './components/ApplianceModal';
 import { AutomationModal } from './components/AutomationModal';
 import { BottomNav } from './components/BottomNav';
@@ -185,6 +186,7 @@ export default function App() {
           }} />
         </div>
       )}
+      {activeTab === 'discover' && <Discover />}
       {activeTab === 'chatbot' && <Chatbot appliances={appliances} automations={automations} />}
 
       {/* FULL APPLIANCE INSPECTION MODAL */}

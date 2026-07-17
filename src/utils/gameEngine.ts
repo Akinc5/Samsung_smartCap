@@ -18,7 +18,11 @@ import type {
 } from '../types';
 
 // ── Game-balance constants (confirmed with the user, not derived from data) ──
-export const CONTROL_POINTS_PER_ROUND = 3;
+// Lowered from 3→2: with 3-4 activatable power-ups per round, 3 CP left enough
+// slack to cover everything and never take a combo hit. 2 CP forces a genuine
+// tradeoff every round — the 2 devices' full overlap (not just one appliance's
+// share, see atRiskKwh below) is truly at stake if you can't cover both combos.
+export const CONTROL_POINTS_PER_ROUND = 2;
 export const XP_PER_KWH = 50;
 
 // Average of the two real measured overlap ratios: 6,777W/4,700W and 6,703W/4,700W
@@ -114,9 +118,14 @@ export function buildGameConfig(appliances: Appliance[], automations: Automation
   // heater_stagger.applianceIds is already ['heater','ac'] and laundry_stagger's
   // is already ['washer','heater'] in the real data — the heater automation is
   // already, in the real data, a party to both combo pairs.
+  //
+  // atRiskKwh covers BOTH overlapping appliances' real per-round shares, not
+  // just one — an unmitigated overlap puts the whole shared load at risk, not
+  // a single device's slice of it. Still 100% real weeklyKwh-derived numbers,
+  // just widening which of them the penalty multiplier applies to.
   const combos: ComboDefinition[] = [
-    { id: 'ac_heater', automationIds: ['ac_sleep', 'heater_stagger'], atRiskKwh: shares.heater },
-    { id: 'washer_heater', automationIds: ['laundry_stagger', 'heater_stagger'], atRiskKwh: shares.washer },
+    { id: 'ac_heater', automationIds: ['ac_sleep', 'heater_stagger'], atRiskKwh: shares.heater + shares.ac },
+    { id: 'washer_heater', automationIds: ['laundry_stagger', 'heater_stagger'], atRiskKwh: shares.washer + shares.heater },
   ];
 
   return { ready: true, combos, shares };

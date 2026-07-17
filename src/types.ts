@@ -57,7 +57,25 @@ export interface Insight {
   color: string;
 }
 
-export type TabId = 'dashboard' | 'rank' | '3dhome' | 'kiri' | 'chatbot' | 'game';
+export type TabId = 'dashboard' | 'rank' | '3dhome' | 'kiri' | 'chatbot' | 'game' | 'discover';
+
+// ─────────────────────────────────────────────────────────────
+// Discover — static, vendor-published product listings (real
+// Samsung.com models/specs/URLs the user supplied directly). Not part
+// of the measured-household data model: no ruleSource, no automation
+// ties, no kWh — these are marketing specs, not usage claims.
+// ─────────────────────────────────────────────────────────────
+
+export interface DiscoverProduct {
+  id: string;
+  category: string;
+  name: string;
+  model: string;
+  icon: LucideIcon;
+  accent: string;
+  specs: string[];
+  url: string;
+}
 
 // ─────────────────────────────────────────────────────────────
 // Game loop — 7-round match built from the real measured

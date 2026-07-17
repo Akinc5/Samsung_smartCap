@@ -28,6 +28,7 @@ There is no test suite, linter, or formatter configured in this repo.
 - `EnergyRank.tsx` — gamification results screen (XP, rank, achievements). Receives `matchHistory` from `App.tsx` and derives all stats live from it (`src/data/ranks.ts`, `src/data/achievements.ts`) — no hardcoded numbers.
 - `GameView.tsx` — the 7-round match itself (control points, power-up toggles, combo penalties, scoring). See "Game loop" below.
 - `Home3D.tsx` — CSS-only isometric "3D" floor plan visualizing appliance locations and live energy flow (SVG lines from a central panel to each active appliance).
+- `Discover.tsx` — static cross-sell screen, 3 real Samsung.com product listings (`src/data/discoverProducts.ts`). Vendor-published specs/model numbers/URLs, not measured household data — no `ruleSource`, no kWh ties, the "every number traces to the household table" Hard Rule below doesn't apply here. No price field (Samsung's own page owns current pricing).
 
 **Components** (`src/components/`) — shared UI: `ApplianceModal` (detail/inspection modal opened via `onSelectAppliance`), `BottomNav`, `StarIcon`.
 
@@ -102,14 +103,18 @@ a quick fix. Three modes, one wrapper (`callGemini(prompt, useSearch)`):
   (product-lookup always resolves "generic, nothing found"; chatbot mode returns `null` and the
   caller uses the existing local template answer) — the whole app works with zero live calls.
 - Game loop is now implemented (`src/views/GameView.tsx`, `src/utils/gameEngine.ts`): 7 rounds =
-  the 5 real measured automations reframed as per-round power-up toggles, 3 control points/round,
-  combo penalties grounded in the real washer/heater overlap spike ratio (1.434×, averaged from
-  the two measured spikes in `laundry_stagger.evidence`). Round 1 = the real May 8 laundry event,
-  Round 4 = the real May 11 one (kept 3 rounds apart to match the real 3-day gap) — every other
-  appliance behaves identically every round, matching their own automations' "100%/consistent all
-  7 days" confidence text. Only measured automations/appliances participate; generic Coach
-  Agent-created cards are not involved in round mechanics. kWh only, no ₹ conversion anywhere in
-  the game (same open TODO as `costMonthly` elsewhere). Entirely in-memory, no persistence, same
+  the 5 real measured automations reframed as per-round power-up toggles, 2 control points/round
+  (tightened from an original 3 — with 3-4 activatable power-ups per round, 3 CP left enough slack
+  to dodge every combo penalty for free; 2 forces a real tradeoff each round), combo penalties
+  grounded in the real washer/heater overlap spike ratio (1.434×, averaged from the two measured
+  spikes in `laundry_stagger.evidence`) and applied to BOTH overlapping appliances' real per-round
+  shares (not just one), which round is the laundry round is randomized each match (always keeping
+  the real 3-day gap between the washing machine's two dated events, May 8 and May 11 — possible
+  placements are rounds (1,4)/(2,5)/(3,6)/(4,7)) — every other appliance behaves identically every
+  round, matching their own automations' "100%/consistent all 7 days" confidence text. Only
+  measured automations/appliances participate; generic Coach Agent-created cards are not involved
+  in round mechanics. kWh only, no ₹ conversion anywhere in the game (same open TODO as
+  `costMonthly` elsewhere). Entirely in-memory, no persistence, same
   as the rest of the app — a page reload resets both the current match and `matchHistory`.
   **Clean next step, not built**: a Coach Agent "play mode" hook for live one-line feedback during
   rounds — `chatbotSynthesize`/`generateAutomations`'s existing mock-fallback + guardrail-filtered

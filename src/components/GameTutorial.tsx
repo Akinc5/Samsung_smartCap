@@ -7,7 +7,7 @@ interface GameTutorialProps {
 
 const STEPS = [
   'Each round is one real day from this household\'s data.',
-  'You have 3 control points per round — spend them to activate power-ups (WindFree, stagger, delay, daylight cutoff).',
+  'You have 2 control points per round — spend them to activate power-ups (WindFree, stagger, delay, daylight cutoff). You can\'t cover everything, so choose carefully.',
   'Leaving overlapping appliances unmanaged triggers a combo penalty — a real demand spike from this household\'s data.',
   'Lower total kWh than the baseline (341.39 kWh, no power-ups) = you win the week.',
   'XP and achievements are earned from real match results, not random.',
